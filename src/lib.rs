@@ -1,14 +1,22 @@
 use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
 
+/// Wake up the given mac_addr by broadcasting a [magic packet] on UDP port 9.
+///
+/// [magic packet]: https://en.wikipedia.org/wiki/Wake-on-LAN#Magic_packet
 pub fn wake(mac_addr: impl AsRef<str>) -> Result<(), WOLError> {
     let payload = build_payload(mac_addr.as_ref())?;
     broadcast_payload(payload)
 }
 
+/// Errors that may be encountered by this package.
 pub enum WOLError {
+    /// Unable to bind a UDP socket for broadcasting.
     Bind,
+    /// Unable to set broadcasting mode for the bound socket.
     SetBroadcast,
+    /// Unable to send the magic packet out.
     SendPacket,
+    /// The target MAC Address is invalid.
     InvalidMACAddress,
 }
 
@@ -23,6 +31,9 @@ impl std::fmt::Debug for WOLError {
     }
 }
 
+/// Build a Wake-on-LAN [magic packet] with mac_addr.
+///
+/// [magic packet]: https://en.wikipedia.org/wiki/Wake-on-LAN#Magic_packet
 fn build_payload(mac_addr: impl AsRef<str>) -> Result<Vec<u8>, WOLError> {
     let mut payload = Vec::with_capacity(102);
 
@@ -38,6 +49,9 @@ fn build_payload(mac_addr: impl AsRef<str>) -> Result<Vec<u8>, WOLError> {
     Ok(payload)
 }
 
+/// Parse a MAC Address string into a six-byte array.
+///
+/// Some care is put into parsing the string byte-pair-wise to efficiently ensure correctness.
 fn parse_mac_address(mac_addr: impl AsRef<str>) -> Result<[u8; 6], WOLError> {
     let mac_addr = mac_addr.as_ref();
     if mac_addr.len() != 17 {
@@ -55,6 +69,7 @@ fn parse_mac_address(mac_addr: impl AsRef<str>) -> Result<[u8; 6], WOLError> {
     Ok(result)
 }
 
+/// Broadcast a payload on UDP port 9.
 fn broadcast_payload(payload: Vec<u8>) -> Result<(), WOLError> {
     let socket_addr = SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0));
     let socket = UdpSocket::bind(socket_addr).map_err(|_| WOLError::Bind)?;
